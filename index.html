@@ -351,6 +351,15 @@
             border-top: 3px solid #38bdf8;
             animation: spin 1s linear infinite;
         }
+        
+        .protocol-info {
+            display: inline-block;
+            padding: 5px 10px;
+            background: rgba(56, 189, 248, 0.15);
+            border-radius: 5px;
+            font-size: 0.9rem;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
@@ -391,15 +400,19 @@
         </div>
         
         <div class="security-info fade-in delay-3">
-            <h3><i class="fas fa-info-circle"></i> 系统说明</h3>
+            <h3><i class="fas fa-info-circle"></i> 说明</h3>
             <ul>
+                <li><strong>智能域名匹配</strong></li>
+                <li><strong>协议自动补全</strong>：如果链接没有协议头，自动添加https://</li>
                 <li><strong>信任域名</strong>：3秒后自动在本页面跳转</li>
                 <li><strong>非信任域名</strong>：显示安全提示并提供新标签页打开选项</li>
             </ul>
         </div>
         
         <div class="footer fade-in delay-4">
-            <p><i class="fas fa-globe"></i> 当前检测域名: <span id="currentDomain">等待解析...</span></p>
+            <p><i class="fas fa-globe"></i> 当前检测域名: <span id="currentDomain">等待解析...</span> | 
+                <span class="protocol-info">协议: <span id="protocolIndicator">自动检测</span></span>
+            </p>
         </div>
     </div>
 
@@ -413,6 +426,7 @@
             const redirectButton = document.getElementById('redirectButton');
             const currentDomainSpan = document.getElementById('currentDomain');
             const domainListContainer = document.getElementById('domainListContainer');
+            const protocolIndicator = document.getElementById('protocolIndicator');
             
             // 信任域名列表URL（外部文件）
             const TRUSTED_DOMAINS_URL = '/trusted-domains.json';
@@ -424,15 +438,38 @@
             // 存储信任域名列表
             let trustedDomains = [];
             
-            // 提取域名
-            const extractDomain = (url) => {
-                try {
-                    const domain = new URL(url).hostname;
-                    // 移除www前缀
-                    return domain.replace(/^www\./, '');
-                } catch (e) {
-                    return null;
+            // 提取域名的最后两部分（如：alist.myproject.dpdns.org → dpdns.org）
+            const extractRootDomain = (domain) => {
+                if (!domain) return null;
+                
+                // 移除www前缀
+                const cleanDomain = domain.replace(/^www\./, '');
+                
+                // 分割域名部分
+                const parts = cleanDomain.split('.');
+                
+                // 确保有足够的组成部分
+                if (parts.length < 2) return cleanDomain;
+                
+                // 取最后两部分
+                return parts.slice(-2).join('.');
+            };
+            
+            // 添加协议头（如果缺失）
+            const normalizeUrl = (url) => {
+                if (!url) return null;
+                
+                // 解码URL
+                url = decodeURIComponent(url);
+                
+                // 检查是否包含协议
+                if (!/^https?:\/\//i.test(url)) {
+                    protocolIndicator.textContent = "已添加https://";
+                    return 'https://' + url;
                 }
+                
+                protocolIndicator.textContent = url.startsWith('https') ? "https://" : "http://";
+                return url;
             };
             
             // 加载信任域名列表
@@ -514,41 +551,57 @@
                     return;
                 }
                 
+                // 标准化URL（添加协议）
+                targetUrl = normalizeUrl(targetUrl);
+                
                 // 显示目标URL
                 urlDisplay.innerHTML = `<p><i class="fas fa-link"></i> ${targetUrl}</p>`;
                 
-                // 提取域名
-                const domain = extractDomain(targetUrl);
-                currentDomainSpan.textContent = domain || targetUrl;
-                
-                // 模拟加载过程
-                setTimeout(() => {
-                    if (domain && trustedDomains.includes(domain)) {
-                        // 信任域名 - 自动跳转
-                        statusMessage.textContent = "安全域名 - 即将自动跳转";
-                        statusMessage.className = "status safe";
-                        
-                        // 显示倒计时
-                        let count = 3;
-                        const countdown = setInterval(() => {
-                            statusMessage.textContent = `安全域名 - ${count}秒后自动跳转`;
-                            count--;
+                try {
+                    // 提取域名
+                    const urlObj = new URL(targetUrl);
+                    const domain = urlObj.hostname;
+                    
+                    // 提取根域名（最后两部分）
+                    const rootDomain = extractRootDomain(domain);
+                    currentDomainSpan.textContent = rootDomain || domain;
+                    
+                    // 模拟加载过程
+                    setTimeout(() => {
+                        if (rootDomain && trustedDomains.includes(rootDomain)) {
+                            // 信任域名 - 自动跳转
+                            statusMessage.textContent = "安全域名 - 即将自动跳转";
+                            statusMessage.className = "status safe";
                             
-                            if (count < 0) {
-                                clearInterval(countdown);
-                                // 实际跳转
-                                statusMessage.textContent = "跳转中...";
-                                window.location.href = targetUrl;
-                            }
-                        }, 1000);
-                    } else {
-                        // 非信任域名 - 显示按钮
-                        statusMessage.textContent = "警告：该域名不在信任名单中";
-                        statusMessage.className = "status warning";
-                        loader.style.display = 'none';
-                        redirectButtonContainer.style.display = 'block';
-                    }
-                }, 1500);
+                            // 显示倒计时
+                            let count = 3;
+                            const countdown = setInterval(() => {
+                                statusMessage.textContent = `安全域名 - ${count}秒后自动跳转`;
+                                count--;
+                                
+                                if (count < 0) {
+                                    clearInterval(countdown);
+                                    // 实际跳转
+                                    statusMessage.textContent = "跳转中...";
+                                    window.location.href = targetUrl;
+                                }
+                            }, 1000);
+                        } else {
+                            // 非信任域名 - 显示按钮
+                            statusMessage.textContent = "警告：该域名不在信任名单中";
+                            statusMessage.className = "status warning";
+                            loader.style.display = 'none';
+                            redirectButtonContainer.style.display = 'block';
+                        }
+                    }, 1500);
+                } catch (e) {
+                    // URL解析失败
+                    statusMessage.textContent = "错误：URL格式无效";
+                    statusMessage.className = "status error";
+                    urlDisplay.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> 无法解析目标URL</p>`;
+                    loader.style.display = 'none';
+                    currentDomainSpan.textContent = "无效URL";
+                }
             };
             
             // 绑定按钮事件
@@ -566,18 +619,8 @@
                     this.innerHTML = '<i class="fas fa-check"></i> 已打开';
                     this.classList.remove('warning');
                     this.classList.add('success');
-                    
-                    // 更新计数器
-                    const counter = document.querySelector('.counter');
-                    counter.textContent = (parseInt(counter.textContent.replace(/,/g, '')) + 1).toLocaleString();
                 }, 800);
             });
-            
-            // 更新计数器动画
-            setInterval(() => {
-                const counter = document.querySelector('.counter');
-                counter.textContent = (parseInt(counter.textContent.replace(/,/g, '')) + 1).toLocaleString();
-            }, 10000);
             
             // 初始化处理
             processRedirect();
