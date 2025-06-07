@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中转页</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .container {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 800px;
+            padding: 30px;
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            z-index: -1;
+        }
+        
+        .header {
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .domain-list, .redirect-container {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .domain-list:hover, .redirect-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        h2 i {
+            font-size: 1.5rem;
+        }
+        
+        .domains {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 15px;
+            min-height: 120px;
+            align-items: center;
+        }
+        
+        .domain-tag {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 50px;
+            padding: 8px 18px;
+            font-size: 0.9rem;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .domain-tag i {
+            font-size: 0.8rem;
+        }
+        
+        .domain-tag:hover {
+            background: rgba(56, 189, 248, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .redirect-box {
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .url-display {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            word-break: break-all;
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status {
+            font-size: 1.1rem;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: inline-block;
+            transition: all 0.5s ease;
+        }
+        
+        .status.safe {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+            border: 1px solid rgba(72, 187, 120, 0.3);
+        }
+        
+        .status.warning {
+            background: rgba(246, 173, 85, 0.2);
+            color: #f6ad55;
+            border: 1px solid rgba(246, 173, 85, 0.3);
+        }
+        
+        .status.loading {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+        
+        .status.error {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+            border: 1px solid rgba(245, 101, 101, 0.3);
+        }
+        
+        .btn {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 35px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn.warning {
+            background: linear-gradient(90deg, #f6ad55, #f56565);
+        }
+        
+        .btn.success {
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            cursor: default;
+        }
+        
+        .btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 5px solid #00f2fe;
+            animation: spin 1s linear infinite;
+            margin: 20px 0;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .counter {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin: 0 5px;
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease forwards;
+        }
+        
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+        }
+        
+        .security-info {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .security-info h3 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #38bdf8;
+        }
+        
+        .security-info ul {
+            padding-left: 25px;
+        }
+        
+        .security-info li {
+            margin: 10px 0;
+            color: #cbd5e1;
+        }
+        
+        .domain-loader {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #38bdf8;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <div class="content">
+            <div class="domain-list fade-in delay-1">
+                <h2><i class="fas fa-check-circle"></i> 信任域名白名单</h2>
+                <div class="domains" id="domainListContainer">
+                    <div class="domain-loader"></div>
+                    <p style="color: #94a3b8;">正在加载信任域名列表...</p>
+                </div>
+            </div>
+            
+            <div class="redirect-container fade-in delay-2">
+                <h2><i class="fas fa-external-link-alt"></i> 跳转控制中心</h2>
+                <div class="redirect-box">
+                    <div class="url-display" id="urlDisplay">
+                        <p>正在解析URL参数...</p>
+                    </div>
+                    
+                    <div class="status loading" id="statusMessage">
+                        正在检测域名安全性...
+                    </div>
+                    
+                    <div id="loader" class="loader"></div>
+                    
+                    <div id="redirectButtonContainer" style="display: none;">
+                        <button class="btn warning" id="redirectButton">
+                            <i class="fas fa-external-link-alt"></i> 在新标签页中打开
+                        </button>
+                        <p style="margin-top: 15px; color: #f6ad55;">
+                            <i class="fas fa-exclamation-triangle"></i> 该域名不在信任名单中
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="security-info fade-in delay-3">
+            <h3><i class="fas fa-info-circle"></i> 系统说明</h3>
+            <ul>
+                <li><strong>信任域名</strong>：3秒后自动在本页面跳转</li>
+                <li><strong>非信任域名</strong>：显示安全提示并提供新标签页打开选项</li>
+            </ul>
+        </div>
+        
+        <div class="footer fade-in delay-4">
+            <p><i class="fas fa-globe"></i> 当前检测域名: <span id="currentDomain">等待解析...</span></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素
+            const urlDisplay = document.getElementById('urlDisplay');
+            const statusMessage = document.getElementById('statusMessage');
+            const loader = document.getElementById('loader');
+            const redirectButtonContainer = document.getElementById('redirectButtonContainer');
+            const redirectButton = document.getElementById('redirectButton');
+            const currentDomainSpan = document.getElementById('currentDomain');
+            const domainListContainer = document.getElementById('domainListContainer');
+            
+            // 信任域名列表URL（外部文件）
+            const TRUSTED_DOMAINS_URL = '/trusted-domains.json';
+            
+            // 从URL参数获取目标URL
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetUrl = urlParams.get('url');
+            
+            // 存储信任域名列表
+            let trustedDomains = [];
+            
+            // 提取域名
+            const extractDomain = (url) => {
+                try {
+                    const domain = new URL(url).hostname;
+                    // 移除www前缀
+                    return domain.replace(/^www\./, '');
+                } catch (e) {
+                    return null;
+                }
+            };
+            
+            // 加载信任域名列表
+            const loadTrustedDomains = async () => {
+                try {
+                    const response = await fetch(TRUSTED_DOMAINS_URL);
+                    if (!response.ok) {
+                        throw new Error('无法加载信任域名列表');
+                    }
+                    
+                    trustedDomains = await response.json();
+                    
+                    // 渲染域名列表
+                    domainListContainer.innerHTML = '';
+                    trustedDomains.forEach(domain => {
+                        const domainTag = document.createElement('div');
+                        domainTag.className = 'domain-tag';
+                        domainTag.innerHTML = `<i class="fas fa-globe"></i> ${domain}`;
+                        domainListContainer.appendChild(domainTag);
+                    });
+                    
+                    return true;
+                } catch (error) {
+                    console.error('加载信任域名列表失败:', error);
+                    
+                    // 使用默认域名列表
+                    trustedDomains = [
+                        'example.com',
+                        'trusted-shop.com',
+                        'university.edu',
+                        'news-portal.org',
+                        'cloud-service.net',
+                        'secure-site.gov'
+                    ];
+                    
+                    // 渲染默认域名列表
+                    domainListContainer.innerHTML = '';
+                    trustedDomains.forEach(domain => {
+                        const domainTag = document.createElement('div');
+                        domainTag.className = 'domain-tag';
+                        domainTag.innerHTML = `<i class="fas fa-globe"></i> ${domain}`;
+                        domainListContainer.appendChild(domainTag);
+                    });
+                    
+                    // 显示警告
+                    const warning = document.createElement('p');
+                    warning.style.color = '#f6ad55';
+                    warning.style.marginTop = '10px';
+                    warning.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 使用默认信任域名列表';
+                    domainListContainer.appendChild(warning);
+                    
+                    return true;
+                }
+            };
+            
+            // 处理跳转逻辑
+            const processRedirect = async () => {
+                // 先加载信任域名列表
+                statusMessage.textContent = "正在加载信任域名列表...";
+                statusMessage.className = "status loading";
+                
+                const domainsLoaded = await loadTrustedDomains();
+                
+                if (!domainsLoaded) {
+                    statusMessage.textContent = "错误：无法加载信任域名列表";
+                    statusMessage.className = "status error";
+                    urlDisplay.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> 系统配置错误</p>`;
+                    loader.style.display = 'none';
+                    return;
+                }
+                
+                // 检查目标URL
+                if (!targetUrl) {
+                    statusMessage.textContent = "错误：未提供目标URL";
+                    statusMessage.className = "status error";
+                    urlDisplay.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> 请在URL参数中提供目标链接（?url=）</p>`;
+                    loader.style.display = 'none';
+                    currentDomainSpan.textContent = "未提供";
+                    return;
+                }
+                
+                // 显示目标URL
+                urlDisplay.innerHTML = `<p><i class="fas fa-link"></i> ${targetUrl}</p>`;
+                
+                // 提取域名
+                const domain = extractDomain(targetUrl);
+                currentDomainSpan.textContent = domain || targetUrl;
+                
+                // 模拟加载过程
+                setTimeout(() => {
+                    if (domain && trustedDomains.includes(domain)) {
+                        // 信任域名 - 自动跳转
+                        statusMessage.textContent = "安全域名 - 即将自动跳转";
+                        statusMessage.className = "status safe";
+                        
+                        // 显示倒计时
+                        let count = 3;
+                        const countdown = setInterval(() => {
+                            statusMessage.textContent = `安全域名 - ${count}秒后自动跳转`;
+                            count--;
+                            
+                            if (count < 0) {
+                                clearInterval(countdown);
+                                // 实际跳转
+                                statusMessage.textContent = "跳转中...";
+                                window.location.href = targetUrl;
+                            }
+                        }, 1000);
+                    } else {
+                        // 非信任域名 - 显示按钮
+                        statusMessage.textContent = "警告：该域名不在信任名单中";
+                        statusMessage.className = "status warning";
+                        loader.style.display = 'none';
+                        redirectButtonContainer.style.display = 'block';
+                    }
+                }, 1500);
+            };
+            
+            // 绑定按钮事件
+            redirectButton.addEventListener('click', function() {
+                // 添加点击效果
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在打开...';
+                this.disabled = true;
+                
+                setTimeout(() => {
+                    // 打开新标签页
+                    window.open(targetUrl, '_blank');
+                    
+                    // 显示成功消息
+                    statusMessage.textContent = "链接已在新标签页中打开！";
+                    this.innerHTML = '<i class="fas fa-check"></i> 已打开';
+                    this.classList.remove('warning');
+                    this.classList.add('success');
+                    
+                    // 更新计数器
+                    const counter = document.querySelector('.counter');
+                    counter.textContent = (parseInt(counter.textContent.replace(/,/g, '')) + 1).toLocaleString();
+                }, 800);
+            });
+            
+            // 更新计数器动画
+            setInterval(() => {
+                const counter = document.querySelector('.counter');
+                counter.textContent = (parseInt(counter.textContent.replace(/,/g, '')) + 1).toLocaleString();
+            }, 10000);
+            
+            // 初始化处理
+            processRedirect();
+        });
+    </script>
+</body>
+</html>
