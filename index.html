@@ -360,6 +360,23 @@
             font-size: 0.9rem;
             margin: 5px;
         }
+        
+        .domain-info {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .domain-badge {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            color: #8b5cf6;
+        }
     </style>
 </head>
 <body>
@@ -379,6 +396,11 @@
                 <div class="redirect-box">
                     <div class="url-display" id="urlDisplay">
                         <p>正在解析URL参数...</p>
+                    </div>
+                    
+                    <div class="domain-info">
+                        <div class="domain-badge">完整域名: <span id="fullDomain">等待解析</span></div>
+                        <div class="domain-badge">根域名: <span id="rootDomain">等待解析</span></div>
                     </div>
                     
                     <div class="status loading" id="statusMessage">
@@ -402,7 +424,7 @@
         <div class="security-info fade-in delay-3">
             <h3><i class="fas fa-info-circle"></i> 说明</h3>
             <ul>
-                <li><strong>智能域名匹配</strong></li>
+                <li><strong>双层级域名检测</strong></li>
                 <li><strong>协议自动补全</strong>：如果链接没有协议头，自动添加https://</li>
                 <li><strong>信任域名</strong>：3秒后自动在本页面跳转</li>
                 <li><strong>非信任域名</strong>：显示安全提示并提供新标签页打开选项</li>
@@ -427,6 +449,8 @@
             const currentDomainSpan = document.getElementById('currentDomain');
             const domainListContainer = document.getElementById('domainListContainer');
             const protocolIndicator = document.getElementById('protocolIndicator');
+            const fullDomainSpan = document.getElementById('fullDomain');
+            const rootDomainSpan = document.getElementById('rootDomain');
             
             // 信任域名列表URL（外部文件）
             const TRUSTED_DOMAINS_URL = '/trusted-domains.json';
@@ -442,17 +466,21 @@
             const extractRootDomain = (domain) => {
                 if (!domain) return null;
                 
-                // 移除www前缀
-                const cleanDomain = domain.replace(/^www\./, '');
-                
                 // 分割域名部分
-                const parts = cleanDomain.split('.');
+                const parts = domain.split('.');
                 
-                // 确保有足够的组成部分
-                if (parts.length < 2) return cleanDomain;
+                // 如果只有两部分，直接返回
+                if (parts.length === 2) {
+                    return domain;
+                }
                 
-                // 取最后两部分
-                return parts.slice(-2).join('.');
+                // 如果大于两部分，取最后两部分
+                if (parts.length > 2) {
+                    return parts.slice(-2).join('.');
+                }
+                
+                // 其他情况（只有一部分？）直接返回
+                return domain;
             };
             
             // 添加协议头（如果缺失）
@@ -545,7 +573,7 @@
                 if (!targetUrl) {
                     statusMessage.textContent = "错误：未提供目标URL";
                     statusMessage.className = "status error";
-                    urlDisplay.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> 请在URL参数中提供目标链接（?url=）</p>`;
+                    urlDisplay.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> 请在URL参数中提供目标链接</p>`;
                     loader.style.display = 'none';
                     currentDomainSpan.textContent = "未提供";
                     return;
@@ -562,16 +590,34 @@
                     const urlObj = new URL(targetUrl);
                     const domain = urlObj.hostname;
                     
+                    // 更新当前域名显示
+                    currentDomainSpan.textContent = domain;
+                    
                     // 提取根域名（最后两部分）
                     const rootDomain = extractRootDomain(domain);
-                    currentDomainSpan.textContent = rootDomain || domain;
+                    
+                    // 显示域名信息
+                    fullDomainSpan.textContent = domain;
+                    rootDomainSpan.textContent = rootDomain;
                     
                     // 模拟加载过程
                     setTimeout(() => {
-                        if (rootDomain && trustedDomains.includes(rootDomain)) {
+                        // 双重检测：先检查完整域名，再检查根域名
+                        const isFullDomainTrusted = trustedDomains.includes(domain);
+                        const isRootDomainTrusted = trustedDomains.includes(rootDomain);
+                        const isTrusted = isFullDomainTrusted || isRootDomainTrusted;
+                        
+                        if (isTrusted) {
                             // 信任域名 - 自动跳转
                             statusMessage.textContent = "安全域名 - 即将自动跳转";
                             statusMessage.className = "status safe";
+                            
+                            // 显示匹配类型
+                            if (isFullDomainTrusted) {
+                                statusMessage.textContent += " (完整域名匹配)";
+                            } else {
+                                statusMessage.textContent += " (根域名匹配)";
+                            }
                             
                             // 显示倒计时
                             let count = 3;
